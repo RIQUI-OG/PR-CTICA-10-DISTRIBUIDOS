@@ -1,9 +1,15 @@
 timeout: '3600s'
 steps:
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'Build NotasWeb'
-    dir: 'NotasWeb' 
-    args: ['build', '-t', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notas-web:${COMMIT_SHA}', '.']
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'Deploy notes-api'
+    args: [
+      'run', 'deploy', 'pr10-notes-api',
+      '--image', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notes-api:${COMMIT_SHA}',
+      '--region', 'northamerica-northeast2',
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      '--port', '8000'
+    ]
 
   - name: 'gcr.io/cloud-builders/docker'
     id: 'Push NotasWeb'
