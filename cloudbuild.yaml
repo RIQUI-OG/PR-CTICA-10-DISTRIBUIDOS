@@ -29,3 +29,6 @@ steps:
 images:
   - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notas-web:${COMMIT_SHA}'
   - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notes-api:${COMMIT_SHA}'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
