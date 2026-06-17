@@ -1,0 +1,76 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Pérez Hernández Ricardo — Práctica 8: Contenedores y Microservicios
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  notes-api:
+    build: ./notes-api
+    container_name: p8-notes-api
+    ports: ["8000:8000"]
+    networks: [p8-network]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  chat-server:
+    build: ./chat-server
+    container_name: p8-chat-server
+    ports: ["9000:9000"]
+    networks: [p8-network]
+    depends_on:
+      notes-api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-api:
+    build: ./auth-api
+    container_name: p8-auth-api
+    ports: ["8001:8001"]
+    networks: [p8-network]
+    environment:
+      - PORT=8001
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8001/health"]
+      interval: 10s
+
+  media-api:
+    build: ./media-api
+    container_name: p8-media-api
+    ports: ["8002:8002"]
+    networks: [p8-network]
+    environment:
+      - PORT=8002
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8002/health"]
+      interval: 10s
+
+  geo-api:
+    build: ./geo-api
+    container_name: p8-geo-api
+    ports: ["8003:8003"]
+    networks: [p8-network]
+    environment:
+      - PORT=8003
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8003/health"]
+      interval: 10s
+
+  logger-api:
+    build: ./logger-api
+    container_name: p8-logger-api
+    ports: ["7000:7000"]
+    networks: [p8-network]
+    environment:
+      - PORT=7000
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:7000/health"]
+      interval: 10s
+
+networks:
+  p8-network:
+    driver: bridge
