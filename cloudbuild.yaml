@@ -1,45 +1,31 @@
+timeout: '3600s'
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Build NotasWeb'
+    dir: 'NotasWeb'
+    args: ['build', '-t', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notas-web:${COMMIT_SHA}', '.']
 
   - name: 'gcr.io/cloud-builders/docker'
-    id: 'Push logger-api'
-    args: ['push', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/logger-api:${COMMIT_SHA}']
+    id: 'Push NotasWeb'
+    args: ['push', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notas-web:${COMMIT_SHA}']
 
   - name: 'gcr.io/cloud-builders/gcloud'
-    id: 'Deploy logger-api'
-    args: [
-      'run', 'deploy', 'pr10-logger-api',
-      '--image', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/logger-api:${COMMIT_SHA}',
-      '--region', 'northamerica-northeast2',
-      '--platform', 'managed',
-      '--allow-unauthenticated'
-    ]
-
-  # ==========================================
-  # SERVICIO: media-api
-  # ==========================================
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'Build media-api'
-    dir: 'media-api' # <--- EL FIX: Entra a la carpeta antes de ejecutar Docker
-    args: ['build', '-t', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/media-api:${COMMIT_SHA}', '.']
+    id: 'Deploy NotasWeb'
+    args: ['run', 'deploy', 'pr10-notas-web', '--image', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notas-web:${COMMIT_SHA}', '--region', 'northamerica-northeast2', '--platform', 'managed', '--allow-unauthenticated']
 
   - name: 'gcr.io/cloud-builders/docker'
-    id: 'Push media-api'
-    args: ['push', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/media-api:${COMMIT_SHA}']
+    id: 'Build notes-api'
+    dir: 'notes-api'
+    args: ['build', '-t', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notes-api:${COMMIT_SHA}', '.']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Push notes-api'
+    args: ['push', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notes-api:${COMMIT_SHA}']
 
   - name: 'gcr.io/cloud-builders/gcloud'
-    id: 'Deploy media-api'
-    args: [
-      'run', 'deploy', 'pr10-media-api',
-      '--image', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/media-api:${COMMIT_SHA}',
-      '--region', 'northamerica-northeast2',
-      '--platform', 'managed',
-      '--allow-unauthenticated'
-    ]
+    id: 'Deploy notes-api'
+    args: ['run', 'deploy', 'pr10-notes-api', '--image', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notes-api:${COMMIT_SHA}', '--region', 'northamerica-northeast2', '--platform', 'managed', '--allow-unauthenticated']
 
 images:
   - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notas-web:${COMMIT_SHA}'
   - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notes-api:${COMMIT_SHA}'
-  - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/auth-api:${COMMIT_SHA}'
-  - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/chat-server:${COMMIT_SHA}'
-  - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/geo-api:${COMMIT_SHA}'
-  - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/logger-api:${COMMIT_SHA}'
-  - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/media-api:${COMMIT_SHA}'
