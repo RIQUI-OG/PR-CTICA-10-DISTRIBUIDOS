@@ -1,56 +1,45 @@
-# Archivo de configuración para Google Cloud Build
-# Diseñado para una arquitectura de microservicios en Sistemas Distribuidos
-# Proyecto: practica-8-distribuidos
-# Servicio base: pr-ctica-10-distribuidos
 
-steps:
-  # ==========================================
-  # EJEMPLO PARA UN MICROSERVICIO (Ej: notes-api)
-  # ==========================================
-  
-  # 1. Construir la imagen de Docker especificando la subcarpeta como contexto de construcción
   - name: 'gcr.io/cloud-builders/docker'
-    id: 'Build Notes API'
-    args: [
-      'build',
-      '-t', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notes-api:${COMMIT_SHA}',
-      './notes-api' # <--- Aquí indicamos a Cloud Build que entre a la carpeta notes-api
-    ]
+    id: 'Push logger-api'
+    args: ['push', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/logger-api:${COMMIT_SHA}']
 
-  # 2. Subir la imagen empaquetada a Artifact Registry
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'Push Notes API'
-    args: [
-      'push',
-      'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notes-api:${COMMIT_SHA}'
-    ]
-
-  # 3. Desplegar el contenedor en Google Cloud Run
   - name: 'gcr.io/cloud-builders/gcloud'
-    id: 'Deploy Notes API to Cloud Run'
+    id: 'Deploy logger-api'
     args: [
-      'run', 'deploy', 'pr-ctica-10-distribuidos-notes', # Nombre del servicio en Cloud Run
-      '--image', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notes-api:${COMMIT_SHA}',
+      'run', 'deploy', 'pr10-logger-api',
+      '--image', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/logger-api:${COMMIT_SHA}',
       '--region', 'northamerica-northeast2',
       '--platform', 'managed',
-      '--allow-unauthenticated' # Permite acceso público para pruebas académicas
+      '--allow-unauthenticated'
     ]
 
   # ==========================================
-  # OPCIONAL: PUEDES REPLICAR LOS PASOS PARA OTROS SERVICIOS
-  # (Descomenta las líneas de abajo si deseas desplegarlos en paralelo o en la misma ejecución)
+  # SERVICIO: media-api
   # ==========================================
-  
-  # # Ejemplo para auth-api:
-  # - name: 'gcr.io/cloud-builders/docker'
-  #   id: 'Build Auth API'
-  #   args: ['build', '-t', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/auth-api:${COMMIT_SHA}', './auth-api']
-  # - name: 'gcr.io/cloud-builders/docker'
-  #   id: 'Push Auth API'
-  #   args: ['push', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/auth-api:${COMMIT_SHA}']
-  # - name: 'gcr.io/cloud-builders/gcloud'
-  #   id: 'Deploy Auth API'
-  #   args: ['run', 'deploy', 'pr-ctica-10-distribuidos-auth', '--image', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/auth-api:${COMMIT_SHA}', '--region', 'northamerica-northeast2', '--platform', 'managed', '--allow-unauthenticated']
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Build media-api'
+    dir: 'media-api' # <--- EL FIX: Entra a la carpeta antes de ejecutar Docker
+    args: ['build', '-t', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/media-api:${COMMIT_SHA}', '.']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Push media-api'
+    args: ['push', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/media-api:${COMMIT_SHA}']
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'Deploy media-api'
+    args: [
+      'run', 'deploy', 'pr10-media-api',
+      '--image', 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/media-api:${COMMIT_SHA}',
+      '--region', 'northamerica-northeast2',
+      '--platform', 'managed',
+      '--allow-unauthenticated'
+    ]
 
 images:
+  - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notas-web:${COMMIT_SHA}'
   - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/notes-api:${COMMIT_SHA}'
+  - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/auth-api:${COMMIT_SHA}'
+  - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/chat-server:${COMMIT_SHA}'
+  - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/geo-api:${COMMIT_SHA}'
+  - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/logger-api:${COMMIT_SHA}'
+  - 'northamerica-northeast2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/media-api:${COMMIT_SHA}'
