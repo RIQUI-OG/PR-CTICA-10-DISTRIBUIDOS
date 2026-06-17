@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat REST & Notas API — Web Dashboard</title>
+    <title>Ecosistema Distribuido — Práctica 8</title>
     <style>
         :root {
             --bg-main: #1a1a2e;
@@ -13,6 +13,7 @@
             --cyan: #00d4ff;
             --green: #00ff88;
             --purple: #d2a8ff;
+            --red: #ff4d4d;
             --text: #c9d1d9;
             --gray: #555577;
             --dark-gray: #444466;
@@ -95,6 +96,7 @@
         .msg .time { color: var(--dark-gray); margin-right: 6px; }
         .msg.sistema { color: var(--gray); font-style: italic; }
         .msg.notas { color: var(--purple); }
+        .msg.alerta { color: var(--red); font-weight: bold; }
         .msg.propio .sender { color: #79c0ff; }
         .msg.otro .sender { color: var(--green); }
 
@@ -128,6 +130,27 @@
         }
 
         #btn-send:hover { background-color: #2ea043; }
+
+        /* Quick Actions Bar */
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .btn-action {
+            background-color: var(--bg-panel);
+            color: var(--text);
+            border: 1px solid #30363d;
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-action:hover { background-color: #30363d; }
+        .btn-action.red:hover { background-color: #7a1515; border-color: var(--red); color: white;}
 
         /* Right Side: Sidebar Panel */
         sidebar {
@@ -275,6 +298,9 @@
 </head>
 <body>
 
+    <!-- Input oculto para subida de archivos (Media API) -->
+    <input type="file" id="file-input" style="display:none;" onchange="subirImagen(event)" accept="image/png, image/jpeg">
+
     <div id="login-modal">
         <div class="modal-box">
             <h2>💬 Ingresa tu nombre de usuario:</h2>
@@ -285,17 +311,25 @@
     </div>
 
     <header>
-        <h1>💬 CHAT REST & NOTAS API (Sistemas Distribuidos)</h1>
+        <h1>💬 ECOSISTEMA DISTRIBUIDO (6 Microservicios)</h1>
         <div id="user-badge">● Desconectado</div>
     </header>
 
     <main>
         <div class="chat-container">
-            <div class="section-label">MENSAJES (Soporta comandos de /nota)</div>
+            <div class="section-label">MENSAJES DEL SERVIDOR (Usa comandos: /nota, /media, /geo, /alerta)</div>
             <div id="chat-box"></div>
+            
             <div class="input-area">
-                <input type="text" id="message-input" placeholder="Escribe un mensaje o /nota add Título | Contenido..." autocomplete="off">
+                <input type="text" id="message-input" placeholder="Escribe un mensaje..." autocomplete="off">
                 <button id="btn-send" onclick="procesarEntradaInput()">Enviar</button>
+            </div>
+
+            <!-- Botones de Acción Rápida para detonar APIs -->
+            <div class="quick-actions">
+                <button class="btn-action" onclick="document.getElementById('file-input').click()">🖼️ Subir Imagen (Media API)</button>
+                <button class="btn-action" onclick="manejarGeo()">📍 Compartir Ubicación (Geo API)</button>
+                <button class="btn-action red" onclick="manejarAlerta()">🚨 Detonar Alerta (Geo API)</button>
             </div>
         </div>
 
@@ -306,7 +340,7 @@
             </div>
 
             <div class="panel notes-panel">
-                <div class="section-label" style="color: var(--purple); font-weight: bold;">📝 MICROSERVICIO NOTAS (FastAPI)</div>
+                <div class="section-label" style="color: var(--purple); font-weight: bold;">📝 MICROSERVICIO NOTAS</div>
                 <div class="note-form">
                     <input type="text" id="note-title" placeholder="Título de la nota">
                     <textarea id="note-text" placeholder="Contenido..." rows="2"></textarea>
@@ -318,14 +352,18 @@
     </main>
 
     <footer>
-        <div class="section-label">PETICIONES HTTP CONSOLE LOG</div>
+        <div class="section-label">TELEMETRÍA (LOGGER API) Y PETICIONES HTTP</div>
         <div id="console-log"></div>
     </footer>
 
     <script>
-        // ── Configuración Estricta de Endpoints de Cloud Run ──
-        const URL_CHAT = "https://servidor-chat-1086997289741.northamerica-northeast2.run.app";
-        const URL_NOTAS = "https://api-notas-1086997289741.northamerica-northeast2.run.app";
+        // ── Endpoints Locales del Cluster Docker ──
+        const URL_NOTAS  = "http://localhost:8000";
+        const URL_AUTH   = "http://localhost:8001";
+        const URL_MEDIA  = "http://localhost:8002";
+        const URL_GEO    = "http://localhost:8003";
+        const URL_LOGGER = "http://localhost:7000";
+        const URL_CHAT   = "http://localhost:9000";
 
         let usuario = "";
         let ultimoId = 0;
@@ -341,13 +379,35 @@
             consoleBox.scrollTop = consoleBox.scrollHeight;
         }
 
+        // ── Central Logger ──
+        async function registrarLog(servicio, nivel, mensaje) {
+            try {
+                await fetch(`${URL_LOGGER}/log`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ service: servicio, level: nivel, message: mensaje })
+                });
+            } catch(e) {}
+        }
+
         async function inicializarCliente() {
             const input = document.getElementById('username-input');
             usuario = input.value.trim();
             if(!usuario) return alert("Por favor ingresa un nombre válido");
 
+            // 1. Simulación de Validación en Auth API (Puerto 8001)
+            try {
+                await fetch(`${URL_AUTH}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario: "Ricardo", password: "123" }) 
+                });
+                registrarLog("auth-api", "INFO", `Intento de inicio de sesión de ${usuario}`);
+            } catch (err) {}
+
             logHttp(`Intentando POST Chat /unirse para usuario: ${usuario}`);
             try {
+                // 2. Unirse al Chat Server (Puerto 9000)
                 const res = await fetch(`${URL_CHAT}/unirse`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -359,26 +419,25 @@
                     document.getElementById('user-badge').innerText = `● ${usuario}`;
                     document.getElementById('message-input').focus();
                     
-                    // Inicializar Loops de Comunicación Distribuida
+                    registrarLog("chat-client", "SUCCESS", `${usuario} conectado al frontend web.`);
+
                     setInterval(hiloPolling, 1000);
                     setInterval(hiloHeartbeat, 5000);
                     
-                    // Carga Inicial de datos
                     uiListarNotas();
-                    imprimirLocal("SISTEMA", `*** Bienvenido al sistema distribuido, ${usuario} ***`);
+                    imprimirLocal("SISTEMA", `*** Bienvenido al ecosistema distribuido, ${usuario} ***`);
                 } else {
-                    alert("El servidor rechazó la solicitud de acceso.");
+                    alert("El servidor de chat rechazó la solicitud.");
                 }
             } catch (err) {
                 console.error(err);
-                alert(`Error crítico de conexión con ${URL_CHAT}.\n¿Olvidaste activar CORS en Flask?`);
+                alert(`Error crítico de conexión. Verifica que "docker compose up" esté corriendo.`);
             }
         }
 
-        // ── Lógica de Comunicación con Microservicio de Chat (Flask) ──
+        // ── Polling del Chat ──
         async function hiloPolling() {
             try {
-                // 1. Mensajes Nuevos
                 const resMsg = await fetch(`${URL_CHAT}/mensajes?desde=${ultimoId}`);
                 if(resMsg.ok) {
                     const data = await resMsg.json();
@@ -390,7 +449,6 @@
                     }
                 }
 
-                // 2. Usuarios Conectados (Cada 3 segundos para balancear la carga)
                 if(Math.floor(Date.now() / 1000) % 3 === 0) {
                     const resUsr = await fetch(`${URL_CHAT}/usuarios`);
                     if(resUsr.ok) {
@@ -398,9 +456,7 @@
                         actualizarUsuariosUI(dataUsr.usuarios || []);
                     }
                 }
-            } catch (err) {
-                console.error("Error en Polling:", err);
-            }
+            } catch (err) {}
         }
 
         async function hiloHeartbeat() {
@@ -426,7 +482,7 @@
             }
         }
 
-        // ── Lógica de Comunicación con Microservicio de Notas (FastAPI) ──
+        // ── Funciones Microservicio NOTAS (Puerto 8000) ──
         async function uiAgregarNota() {
             const titleInput = document.getElementById('note-title');
             const textInput = document.getElementById('note-text');
@@ -445,6 +501,7 @@
                 if(res.status === 201) {
                     titleInput.value = "";
                     textInput.value = "";
+                    registrarLog("notes-api", "INFO", `${usuario} creó la nota: ${t}`);
                     imprimirLocal("API_NOTAS", `Nota creada exitosamente: '${t}'`);
                     uiListarNotas();
                 }
@@ -456,7 +513,6 @@
         async function uiListarNotas() {
             try {
                 const res = await fetch(`${URL_NOTAS}/${usuario}`);
-                logHttp(`GET Notas /${usuario} → ${res.status}`);
                 if(res.status === 200) {
                     const notas = await res.json();
                     const container = document.getElementById('notes-list');
@@ -479,13 +535,72 @@
                 const res = await fetch(`${URL_NOTAS}/${usuario}/${id}`, { method: 'DELETE' });
                 logHttp(`DELETE Notas /${usuario}/${id} → ${res.status}`);
                 if(res.status === 204) {
-                    imprimirLocal("API_NOTAS", `Nota con ID ${id} purgada del sistema.`);
+                    registrarLog("notes-api", "INFO", `${usuario} eliminó una nota.`);
+                    imprimirLocal("API_NOTAS", `Nota purgada del sistema.`);
                     uiListarNotas();
                 }
             } catch(e){}
         }
 
-        // ── Procesamiento de Comandos Avanzados de Consola ──
+        // ── Funciones Microservicio GEO/ALERTS (Puerto 8003) ──
+        async function manejarGeo() {
+            const payload = { usuario: usuario, lat: 19.362, lng: -99.294 };
+            logHttp(`POST Geo /location → ${JSON.stringify(payload)}`);
+            try {
+                const res = await fetch(`${URL_GEO}/location`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+            });
+            if(res.ok) {
+            enviarMensajeChat(`📍 Ubicación actual: Lat ${payload.lat}, Lng ${payload.lng} (Cuajimalpa, CDMX).`);
+            registrarLog("geo-api", "INFO", `Coordenadas recibidas de ${usuario}`);
+        }
+    } catch(e) { logHttp(`ERROR GEO API: ${e}`); }
+}
+
+        async function manejarAlerta() {
+            const payload = { usuario: usuario, tipo_alerta: "PÁNICO", audio_stream_url: "wss://stream.audio.local/live" };
+                logHttp(`POST Geo /emergency → ${JSON.stringify(payload)}`);
+             try {
+            const res = await fetch(`${URL_GEO}/emergency`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+        });
+            if(res.ok) {
+                enviarMensajeChat(`🚨 ¡ALERTA DE ${payload.tipo_alerta}! Transmitiendo mensaje de alerta`);
+                registrarLog("geo-api", "WARNING", `ALERTA GLOBAL detonada por ${usuario}`);
+        }
+    } catch(e) { logHttp(`ERROR GEO API: ${e}`); }
+}
+
+        // ── Funciones Microservicio MEDIA (Puerto 8002) ──
+        async function subirImagen(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+            
+            logHttp(`POST Media /upload/image → Subiendo blob...`);
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch(`${URL_MEDIA}/upload/image`, {
+                    method: 'POST',
+                    body: formData
+                });
+                if(res.ok) {
+                    const data = await res.json();
+                    enviarMensajeChat(`🖼️ [IMAGEN SUPABASE] ${data.storage_url}`);
+                    registrarLog("media-api", "INFO", `Blob ${file.name} subido a Supabase.`);
+                } else {
+                    logHttp(`ERROR: El servidor rechazó el archivo.`);
+                }
+            } catch(e) { logHttp(`ERROR MEDIA API: ${e}`); }
+            event.target.value = ''; // Reset input
+        }
+
+        // ── Procesamiento de Input ──
         function procesarEntradaInput() {
             const input = document.getElementById('message-input');
             const texto = input.value.trim();
@@ -494,6 +609,12 @@
 
             if(texto.startsWith('/nota')) {
                 manejarComandoConsolaNotas(texto);
+            } else if(texto.startsWith('/media')) {
+                document.getElementById('file-input').click();
+            } else if(texto.startsWith('/geo')) {
+                manejarGeo();
+            } else if(texto.startsWith('/alerta')) {
+                manejarAlerta();
             } else {
                 enviarMensajeChat(texto);
             }
@@ -507,7 +628,7 @@
                 const resto = texto.substring(10).split('|');
                 const t = resto[0] ? resto[0].trim() : '';
                 const n = resto[1] ? resto[1].trim() : 'Sin descripción';
-                if(!t) return imprimirLocal("API_NOTAS", "Sintaxis errónea. Usa: /nota add Título | Contenido");
+                if(!t) return imprimirLocal("API_NOTAS", "Usa: /nota add Título | Contenido");
                 
                 fetch(`${URL_NOTAS}/${usuario}`, {
                     method: 'POST',
@@ -516,7 +637,7 @@
                 }).then(res => {
                     logHttp(`POST Notas /${usuario} → ${res.status}`);
                     if(res.status === 201) {
-                        imprimirLocal("API_NOTAS", `Nota creada exitosamente: '${t}'`);
+                        imprimirLocal("API_NOTAS", `Nota creada: '${t}'`);
                         uiListarNotas();
                     }
                 });
@@ -524,14 +645,14 @@
                 uiListarNotas();
             } else if(comando === 'del') {
                 const id = parseInt(partes[2]);
-                if(isNaN(id)) return imprimirLocal("API_NOTAS", "El ID debe ser un número entero.");
+                if(isNaN(id)) return imprimirLocal("API_NOTAS", "El ID debe ser número.");
                 uiEliminarNota(id);
             } else {
-                imprimirLocal("API_NOTAS", "Comando inválido. Usa: /nota [add t|n] , [/nota list] o [/nota del ID]");
+                imprimirLocal("API_NOTAS", "Comando inválido.");
             }
         }
 
-        // ── Renderizadores UI Flujo de Datos ──
+        // ── Renderizadores ──
         function mostrarMensajeUI(msg) {
             const box = document.getElementById('chat-box');
             const hora = msg.timestamp || new Date().toLocaleTimeString();
@@ -542,6 +663,8 @@
             if(usr === "SISTEMA") claseType = "sistema";
             else if(usr === "API_NOTAS") claseType = "notas";
             else if(usr === usuario) claseType = "propio";
+
+            if (txt.includes('🚨') || txt.includes('📍')) claseType += " alerta";
 
             let item = "";
             if(usr === "SISTEMA") {
@@ -574,7 +697,6 @@
             });
         }
 
-        // Manejar el cierre de la ventana del navegador para avisar la desconexión
         window.addEventListener('beforeunload', () => {
             navigator.sendBeacon(`${URL_CHAT}/salir`, JSON.stringify({ usuario: usuario }));
         });
