@@ -1,17 +1,18 @@
 # geo-api/main.py — Puerto: 8003
 import os
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware # 1. IMPORTAR ESTO
+from fastapi.middleware.cors import CORSMiddleware # <--- ESTO ES VITAL
+from pydantic import BaseModel
 
 app = FastAPI(title="Geo & Alert API")
 os.environ["PORT"] = "8003"
 
-# 2. AÑADIR ESTE BLOQUE ANTES DE TUS ENDPOINTS
+# ESTO DEBE IR AQUÍ (ANTES DE LAS RUTAS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # Permite conexiones desde cualquier origen
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],        # Permite POST, GET, OPTIONS, etc.
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
