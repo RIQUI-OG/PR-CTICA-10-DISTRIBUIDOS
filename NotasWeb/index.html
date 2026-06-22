@@ -357,13 +357,13 @@
     </footer>
 
     <script>
-        // ── Endpoints Locales del Cluster Docker ──
-        const URL_NOTAS  = "http://localhost:8000";
-        const URL_AUTH   = "http://localhost:8001";
-        const URL_MEDIA  = "http://localhost:8002";
-        const URL_GEO    = "http://localhost:8003";
-        const URL_LOGGER = "http://localhost:7000";
-        const URL_CHAT   = "http://localhost:9000";
+        // ── Endpoints de Producción (Google Cloud Run) ──
+        const URL_NOTAS  = "https://notes-api-547885514709.europe-west1.run.app";
+        const URL_AUTH   = "https://auth-api-547885514709.europe-west1.run.app";
+        const URL_MEDIA  = "https://media-api-547885514709.northamerica-northeast2.run.app";
+        const URL_GEO    = "https://geo-api-547885514709.europe-west1.run.app";
+        const URL_LOGGER = "https://logger-api-547885514709.northamerica-northeast2.run.app";
+        const URL_CHAT   = "https://chat-server-547885514709.europe-west1.run.app";
 
         let usuario = "";
         let ultimoId = 0;
